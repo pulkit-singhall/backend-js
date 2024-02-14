@@ -25,11 +25,13 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true, "Full name is required"],
         index: true,
+        trim: true,
     },
-    avatar: {
+    avatar: { // form of files
         type: String,
+        required: true, 
     },
-    coverImage: {
+    coverImage: { // form of files
         type: String,
     },
     password: {
@@ -42,12 +44,15 @@ const userSchema = new mongoose.Schema({
             ref: "Video",
         }
     ],
+    refreshToken : {
+        type: String,
+    }
 }, { timestamps: true });
 
 // for hashing of password
-userSchema.pre("save", async function (err, req, res, next) {  // for this keyword
+userSchema.pre("save", async function (next) {  // for this keyword
     if (this.isModified("password")) {
-        this.password = bcrypt.hash(this.password, 5);   
+        this.password = await bcrypt.hash(this.password, 5);   
     }
     next();
 });
@@ -59,7 +64,7 @@ userSchema.methods.checkPassword = async function (userPassword) {
 }
 
 // for jwt token to authorise user
-userSchema.methods.accessToken = async function () {
+userSchema.methods.generateAccessToken = async function () {
     return jwt.sign(
         // payload
         {
@@ -74,7 +79,7 @@ userSchema.methods.accessToken = async function () {
     );
 }
 
-userSchema.methods.refreshToken = async function () {
+userSchema.methods.generateRefreshToken = async function () {
     return jwt.sign(
         // payload
         {
