@@ -3,7 +3,6 @@ import {
     registerUser,
     loginUser,
     logoutUser,
-    updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
     changeCurrentPassword,
@@ -35,9 +34,13 @@ userRoute.route("/token-refresh").post(refreshAccessToken);
 // secured routes 
 userRoute.route("/logout").post(verifyUser, logoutUser);
 userRoute.route("/change-password").post(verifyUser, changeCurrentPassword);
-userRoute.route("/update-avatar").post(verifyUser, updateUserAvatar);
-userRoute.route("/update-coverImage").post(verifyUser, updateUserCoverImage);
-userRoute.route("/update-account").post(verifyUser, updateAccountDetails);
+userRoute.route("/update-avatar").post(verifyUser,
+    upload.fields([{ name: "newAvatar", maxCount: 1 }]),
+    updateUserAvatar);
+userRoute.route("/update-coverImage").post(verifyUser,
+    upload.fields([{ name: "newCoverImage", maxCount: 1 }]),
+    updateUserCoverImage);
+userRoute.route("/current-user").get(verifyUser, getCurrentUser);
 
 // another way
 // userRoute.get('/login', loginUser);

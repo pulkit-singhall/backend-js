@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadFilesToCloud } from "../utils/cloudinary.js";
+import { uploadFilesToCloud, deleteFilesFromCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { cookieOptions } from "../constants.js";
 import dotenv from "dotenv";
@@ -68,11 +68,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
     let cloudUrlAvatar = "";
     let cloudUrlCoverImage = "";
+    let cloudPublicIdAvatar = "";
+    let cloudPublicIdCoverImage = "";
     if (files && Array.isArray(files.avatar) && files.avatar.length > 0) {
         const cloudResponseAvatar = await uploadFilesToCloud(
             files.avatar[0].path
         );
         cloudUrlAvatar = cloudResponseAvatar.url;
+        cloudPublicIdAvatar = cloudResponseAvatar.public_id;
     } else {
         throw new ApiError(412, "Avatar is required!");
     }
@@ -86,6 +89,7 @@ const registerUser = asyncHandler(async (req, res) => {
             files.coverImage[0].path
         );
         cloudUrlCoverImage = cloudResponseCoverImage.url;
+        cloudPublicIdCoverImage = cloudResponseCoverImage.public_id;
     }
 
     const user = await User.create({
@@ -95,6 +99,8 @@ const registerUser = asyncHandler(async (req, res) => {
         email: email,
         password: password,
         coverImage: cloudUrlCoverImage,
+        avatarPublicId: cloudPublicIdAvatar,
+        coverImagePublicId: cloudPublicIdCoverImage,
     });
 
     const newUser = await User.findById(user._id).select(
@@ -234,35 +240,130 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
         const { accessToken, refreshToken } = await generateTokens(user);
 
-        return res.status(201)
+        return res
+            .status(201)
             .cookie("accessToken", accessToken, cookieOptions)
             .cookie("refreshToken", refreshToken, cookieOptions)
-            .json(new ApiResponse(201, {
-                accessToken: accessToken,
-                refreshToken: refreshToken,
-            }, "Access Token Refreshed"));
+            .json(
+                new ApiResponse(
+                    201,
+                    {
+                        accessToken: accessToken,
+                        refreshToken: refreshToken,
+                    },
+                    "Access Token Refreshed"
+                )
+            );
     } catch (error) {
         throw new ApiError(400, `Error : ${error}`);
     }
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
-    
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select("-refreshToken");
+
+    if (!user) {
+        throw new ApiError(405, "User not authorize to change Password");
+    }
+
+    const passwordCheck = await user.checkPassword(oldPassword);
+
+    if (!passwordCheck) {
+        throw new ApiError(408, "Old Password is not correct");
+    }
+
+    // for bycrypting password
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(201).json(new ApiResponse(201, {}, "Password Changed"));
 });
 
-const getCurrentUser = asyncHandler(async (req, res) => {});
+const getCurrentUser = asyncHandler(async (req, res) => {
+    const user = req.user;
+    const currentUser = await User.findById(user._id).select(
+        "-password -refreshToken"
+    );
+    return res.status(200)
+        .json(
+        new ApiResponse(
+            200,
+            {
+                user: currentUser,
+            },
+            "Current User Fetched!"
+        )
+    );
+});
 
-const updateAccountDetails = asyncHandler(async (req, res) => {});
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    /*
+        get new avatar from req through multer
+        upload new avatar on cloudinary
+        update user in database
+        delete previous avatar from cloudinary
+    */
 
-const updateUserAvatar = asyncHandler(async (req, res) => {});
+    const files = req.files;
+    
+    let newAvatarResponseUrl = "";
+    let newAvatarResponsePublicId = "";
+    if (files && Array.isArray(files.newAvatar) && files.newAvatar.length > 0) {
+        const newAvatarLocalPath = files.newAvatar[0].path;
+        const newAvatarResponse = await uploadFilesToCloud(newAvatarLocalPath);
+        newAvatarResponseUrl = newAvatarResponse.url;
+        newAvatarResponsePublicId = newAvatarResponse.public_id;
+    }
+    else {
+        throw new ApiError(405, "New Avatar is Required");
+    }
 
-const updateUserCoverImage = asyncHandler(async (req, res) => {});
+    const user = await User.findById(req.user._id);
+    const oldAvatarPublicId = user.avatarPublicId;
+    
+    user.avatar = newAvatarResponseUrl;
+    user.avatarPublicId = newAvatarResponsePublicId;
+    await user.save({ validateBeforeSave: false });
+    
+    await deleteFilesFromCloud(oldAvatarPublicId);
+
+    return res.status(201)
+        .json(new ApiResponse(201, {}, "Avatar is Changed"));
+
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+    const files = req.files;
+
+    let newCoverImageResponseUrl = "";
+    let newCoverImageResponsePublicId = "";
+    if (files && Array.isArray(files.newCoverImage) && files.newCoverImage.length > 0) {
+        const newCoverImageLocalPath = files.newCoverImage[0].path;
+        const newCoverImageResponse = await uploadFilesToCloud(newCoverImageLocalPath);
+        newCoverImageResponseUrl = newCoverImageResponse.url;
+        newCoverImageResponsePublicId = newCoverImageResponse.public_id;
+    } else {
+        throw new ApiError(405, "New CoverImage is Required");
+    }
+
+    const user = await User.findById(req.user._id);
+    const oldCoverImagePublicId = user.CoverImagePublicId;
+
+    user.CoverImage = newCoverImageResponseUrl;
+    user.CoverImagePublicId = newCoverImageResponsePublicId;
+    await user.save({ validateBeforeSave: false });
+
+    await deleteFilesFromCloud(oldCoverImagePublicId);
+
+    return res.status(201).json(new ApiResponse(201, {}, "CoverImage is Changed"));
+});
 
 export {
     registerUser,
     loginUser,
     logoutUser,
-    updateAccountDetails,
     updateUserAvatar,
     updateUserCoverImage,
     changeCurrentPassword,

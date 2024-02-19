@@ -14,49 +14,62 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const userSchema = new mongoose.Schema({
-    username : {
-        type: String,
-        required: [true, "Username is required"],
-        unique: [true, "Username should be unique"],
-        lowercase: true,
-        trim: true,
-        index: true,
+const userSchema = new mongoose.Schema(
+    {
+        username: {
+            type: String,
+            required: [true, "Username is required"],
+            unique: [true, "Username should be unique"],
+            lowercase: true,
+            trim: true,
+            index: true,
+        },
+        email: {
+            type: String,
+            required: [true, "Email is required"],
+            unique: [true, "Email already exists"],
+            lowercase: true,
+            trim: true,
+        },
+        fullname: {
+            type: String,
+            required: [true, "Full name is required"],
+            index: true,
+            trim: true,
+        },
+        avatar: {
+            // form of files
+            type: String,
+            required: true,
+        },
+        avatarPublicId: {
+            type: String,
+            required: true,
+        },
+        coverImage: {
+            // form of files
+            type: String,
+        },
+        coverImagePublicId: {
+            type: String,
+            required: true,
+        },
+        password: {
+            type: String,
+            required: [true, "Password is required"],
+        },
+        watchHistory: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Video",
+            },
+        ],
+        refreshToken: {
+            type: String,
+        },
     },
-    email: {
-        type: String,
-        required: [true, "Email is required"],
-        unique: [true, "Email already exists"],
-        lowercase: true,
-        trim: true,
-    },
-    fullname: {
-        type: String,
-        required: [true, "Full name is required"],
-        index: true,
-        trim: true,
-    },
-    avatar: { // form of files
-        type: String,
-        required: true, 
-    },
-    coverImage: { // form of files
-        type: String,
-    },
-    password: {
-        type: String,
-        required: [true, "Password is required"],
-    },
-    watchHistory: [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Video",
-        }
-    ],
-    refreshToken : {
-        type: String,
-    }
-}, { timestamps: true });
+    { timestamps: true }
+);
 
 // for hashing of password
 userSchema.pre("save", async function (next) {  // for this keyword
