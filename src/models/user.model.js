@@ -1,3 +1,12 @@
+/*
+    access token -> authenticate user based on email and password.
+
+    refresh token -> authorise user based on a token string. 
+    This token string is stored both on the client side and in the 
+    database also to match it.
+    No need to give password again and again.
+*/
+
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";

@@ -1,8 +1,31 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import ApiError from "../utils/ApiError.js";
+import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uploadFilesToCloud } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { cookieOptions } from "../constants.js";
+import dotenv from "dotenv";
+import jwt from "jsonwebtoken";
+
+dotenv.config();
+
+// access and refresh tokens
+async function generateTokens(user) {
+    try {
+        const accessToken = await user.generateAccessToken();
+        const refreshToken = await user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+
+        return {
+            accessToken,
+            refreshToken,
+        };
+    } catch (error) {
+        throw new ApiError(500, "Error in token generation!");
+    }
+}
 
 const registerUser = asyncHandler(async (req, res) => {
     /*
@@ -46,15 +69,22 @@ const registerUser = asyncHandler(async (req, res) => {
     let cloudUrlAvatar = "";
     let cloudUrlCoverImage = "";
     if (files && Array.isArray(files.avatar) && files.avatar.length > 0) {
-        const cloudResponseAvatar = await uploadFilesToCloud(files.avatar[0].path);
+        const cloudResponseAvatar = await uploadFilesToCloud(
+            files.avatar[0].path
+        );
         cloudUrlAvatar = cloudResponseAvatar.url;
-    }
-    else {
+    } else {
         throw new ApiError(412, "Avatar is required!");
     }
 
-    if (files && Array.isArray(files.coverImage) && files.coverImage.length > 0) {
-        const cloudResponseCoverImage = await uploadFilesToCloud(files.coverImage[0].path);
+    if (
+        files &&
+        Array.isArray(files.coverImage) &&
+        files.coverImage.length > 0
+    ) {
+        const cloudResponseCoverImage = await uploadFilesToCloud(
+            files.coverImage[0].path
+        );
         cloudUrlCoverImage = cloudResponseCoverImage.url;
     }
 
@@ -94,7 +124,10 @@ const loginUser = asyncHandler(async (req, res) => {
 
     if (
         [email, password, username].some((field) => {
-            if (field?.trim() === "") {
+            if (!field) {
+                return true;
+            }
+            if (field.trim() === "") {
                 return true;
             }
         })
@@ -115,11 +148,107 @@ const loginUser = asyncHandler(async (req, res) => {
     if (!passwordCheck) {
         throw new ApiError(412, "Wrong Password!");
     }
+
+    const { accessToken, refreshToken } = await generateTokens(existedUser);
+
+    const loggedInUser = await User.findById(existedUser._id).select(
+        "-password -refreshToken"
+    );
+
+    return res
+        .status(202)
+        .cookie("accessToken", accessToken, cookieOptions)
+        .cookie("refreshToken", refreshToken, cookieOptions)
+        .json(
+            new ApiResponse(
+                202,
+                {
+                    user: loggedInUser,
+                    accessToken: accessToken,
+                    refreshToken: refreshToken,
+                },
+                "Login Success!"
+            )
+        );
 });
 
-const logoutUser = asyncHandler(async (req, res) => {});
+const logoutUser = asyncHandler(async (req, res) => {
+    // clear all req cookies
+    // delete refresh token from database
 
-const changeCurrentPassword = asyncHandler(async (req, res) => {});
+    const user = await req.user;
+
+    if (!user) {
+        throw new ApiError(405, "User not authorize to logout");
+    }
+
+    await User.findByIdAndUpdate(
+        user._id,
+        {
+            $set: {
+                refreshToken: "",
+            },
+        },
+        {
+            new: true,
+        }
+    );
+
+    return res
+        .status(201)
+        .clearCookie("accessToken", cookieOptions)
+        .clearCookie("refreshToken", cookieOptions)
+        .json(new ApiResponse(201, {}, "Logged Out Success!"));
+});
+
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    try {
+        const incomingRefreshToken =
+            req.cookies?.refreshToken || req.body?.refreshToken;
+
+        if (!incomingRefreshToken) {
+            throw new ApiError(404, "Refresh Token Required");
+        }
+
+        // returns payload
+        const decodedIncomingRefreshToken = jwt.verify(
+            incomingRefreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        );
+
+        if (!decodedIncomingRefreshToken) {
+            throw new ApiError(405, "Invalid Token");
+        }
+
+        const user = await User.findById(
+            decodedIncomingRefreshToken._id
+        ).select("-password");
+
+        if (!user) {
+            throw new ApiError(405, "Invalid Token for User");
+        }
+
+        if (user.refreshToken != incomingRefreshToken) {
+            throw new ApiError(407, "Refresh token doesnt match");
+        }
+
+        const { accessToken, refreshToken } = await generateTokens(user);
+
+        return res.status(201)
+            .cookie("accessToken", accessToken, cookieOptions)
+            .cookie("refreshToken", refreshToken, cookieOptions)
+            .json(new ApiResponse(201, {
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+            }, "Access Token Refreshed"));
+    } catch (error) {
+        throw new ApiError(400, `Error : ${error}`);
+    }
+});
+
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    
+});
 
 const getCurrentUser = asyncHandler(async (req, res) => {});
 
@@ -138,4 +267,5 @@ export {
     updateUserCoverImage,
     changeCurrentPassword,
     getCurrentUser,
+    refreshAccessToken,
 };
