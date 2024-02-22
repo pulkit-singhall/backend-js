@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { limit } from "./constants.js"
 import { userRoute } from "./routes/user.routes.js";
 import { tweetRoute } from "./routes/tweet.routes.js";
+import { videoRoute } from "./routes/video.routes.js";
 
 dotenv.config();
 
@@ -43,5 +44,6 @@ app.use(cookieParser());
 // routes
 app.use("/api/users", userRoute);
 app.use("/api/tweets", tweetRoute);
+app.use("/api/videos", videoRoute);
 
 export default app;

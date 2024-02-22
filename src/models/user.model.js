@@ -52,7 +52,6 @@ const userSchema = new mongoose.Schema(
         },
         coverImagePublicId: {
             type: String,
-            required: true,
         },
         password: {
             type: String,

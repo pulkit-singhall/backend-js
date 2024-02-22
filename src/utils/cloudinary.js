@@ -39,10 +39,12 @@ const uploadFilesToCloud = async function (localFilePath) {
 
 const deleteFilesFromCloud = async function (filePublicId) {
     try {
-        await cloudinary.uploader
+        const response = await cloudinary.uploader
             .destroy(filePublicId);
+        return response;
     } catch (error) {
         console.log(`Error in deleting file from cloud: ${error}`);
+        return null;
     }
 }
 
