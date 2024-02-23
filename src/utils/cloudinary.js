@@ -24,6 +24,7 @@ const uploadFilesToCloud = async function (localFilePath) {
         if (!localFilePath) throw "Local file path does not exist!";
         const response = await cloudinary.uploader.upload(localFilePath, {
             resource_type: "auto", 
+            type: "upload",
         });
         fs.unlinkSync(localFilePath);
         return response;
@@ -37,10 +38,13 @@ const uploadFilesToCloud = async function (localFilePath) {
     }
 }
 
-const deleteFilesFromCloud = async function (filePublicId) {
+const deleteImageFileFromCloud = async function (filePublicId) {
     try {
         const response = await cloudinary.uploader
-            .destroy(filePublicId);
+            .destroy(filePublicId, {
+                resource_type: "image",
+                type: "upload",
+            });
         return response;
     } catch (error) {
         console.log(`Error in deleting file from cloud: ${error}`);
@@ -48,7 +52,21 @@ const deleteFilesFromCloud = async function (filePublicId) {
     }
 }
 
+const deleteVideoFileFromCloud = async function (filePublicId) {
+    try {
+        const response = await cloudinary.uploader.destroy(filePublicId, {
+            resource_type: "video",
+            type: "upload",
+        });
+        return response;
+    } catch (error) {
+        console.log(`Error in deleting file from cloud: ${error}`);
+        return null;
+    }
+};
+
 export {
     uploadFilesToCloud,
-    deleteFilesFromCloud,
-}
+    deleteImageFileFromCloud,
+    deleteVideoFileFromCloud,
+};

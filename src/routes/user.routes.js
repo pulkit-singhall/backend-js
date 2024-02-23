@@ -7,7 +7,8 @@ import {
     updateUserCoverImage,
     changeCurrentPassword,
     getCurrentUser,
-    refreshAccessToken
+    refreshAccessToken,
+    getUserById,
 } from "../controllers/user.controller.js";
 import upload from "../middlewares/multer.middleware.js";
 import { verifyUser } from "../middlewares/auth.middleware.js";
@@ -41,6 +42,7 @@ userRoute.route("/update-coverImage").post(verifyUser,
     upload.fields([{ name: "newCoverImage", maxCount: 1 }]),
     updateUserCoverImage);
 userRoute.route("/current-user").get(verifyUser, getCurrentUser);
+userRoute.route("/get-user/:userId").get(getUserById);
 
 // another way
 // userRoute.get('/login', loginUser);

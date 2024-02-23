@@ -1,7 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadFilesToCloud, deleteFilesFromCloud } from "../utils/cloudinary.js";
+import {
+    uploadFilesToCloud,
+    deleteImageFileFromCloud,
+} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { cookieOptions } from "../constants.js";
 import dotenv from "dotenv";
@@ -286,8 +289,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     const currentUser = await User.findById(user._id).select(
         "-password -refreshToken"
     );
-    return res.status(200)
-        .json(
+    return res.status(200).json(
         new ApiResponse(
             200,
             {
@@ -307,7 +309,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     */
 
     const files = req.files;
-    
+
     let newAvatarResponseUrl = "";
     let newAvatarResponsePublicId = "";
     if (files && Array.isArray(files.newAvatar) && files.newAvatar.length > 0) {
@@ -315,23 +317,20 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         const newAvatarResponse = await uploadFilesToCloud(newAvatarLocalPath);
         newAvatarResponseUrl = newAvatarResponse.url;
         newAvatarResponsePublicId = newAvatarResponse.public_id;
-    }
-    else {
+    } else {
         throw new ApiError(405, "New Avatar is Required");
     }
 
     const user = await User.findById(req.user._id);
     const oldAvatarPublicId = user.avatarPublicId;
-    
+
     user.avatar = newAvatarResponseUrl;
     user.avatarPublicId = newAvatarResponsePublicId;
     await user.save({ validateBeforeSave: false });
-    
-    await deleteFilesFromCloud(oldAvatarPublicId);
 
-    return res.status(201)
-        .json(new ApiResponse(201, {}, "Avatar is Changed"));
+    await deleteImageFileFromCloud(oldAvatarPublicId);
 
+    return res.status(201).json(new ApiResponse(201, {}, "Avatar is Changed"));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -339,9 +338,15 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
     let newCoverImageResponseUrl = "";
     let newCoverImageResponsePublicId = "";
-    if (files && Array.isArray(files.newCoverImage) && files.newCoverImage.length > 0) {
+    if (
+        files &&
+        Array.isArray(files.newCoverImage) &&
+        files.newCoverImage.length > 0
+    ) {
         const newCoverImageLocalPath = files.newCoverImage[0].path;
-        const newCoverImageResponse = await uploadFilesToCloud(newCoverImageLocalPath);
+        const newCoverImageResponse = await uploadFilesToCloud(
+            newCoverImageLocalPath
+        );
         newCoverImageResponseUrl = newCoverImageResponse.url;
         newCoverImageResponsePublicId = newCoverImageResponse.public_id;
     } else {
@@ -355,9 +360,35 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     user.CoverImagePublicId = newCoverImageResponsePublicId;
     await user.save({ validateBeforeSave: false });
 
-    await deleteFilesFromCloud(oldCoverImagePublicId);
+    await deleteImageFileFromCloud(oldCoverImagePublicId);
 
-    return res.status(201).json(new ApiResponse(201, {}, "CoverImage is Changed"));
+    return res
+        .status(201)
+        .json(new ApiResponse(201, {}, "CoverImage is Changed"));
+});
+
+const getUserById = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId || userId.trim() === "") {
+        throw new ApiError(400, "User Id is required");
+    }
+
+    const user = await User.findById(userId).select("-password -refreshToken");
+
+    if (!user) {
+        throw new ApiError(400, "Wrong User Id");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                user: user,
+            },
+            "User Fetched Successfully"
+        )
+    );
 });
 
 export {
@@ -369,4 +400,5 @@ export {
     changeCurrentPassword,
     getCurrentUser,
     refreshAccessToken,
+    getUserById,
 };

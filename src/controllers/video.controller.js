@@ -5,7 +5,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {
     uploadFilesToCloud,
-    deleteFilesFromCloud,
+    deleteVideoFileFromCloud,
+    deleteImageFileFromCloud,
 } from "../utils/cloudinary.js";
 
 const getVideoById = asyncHandler(async (req, res) => {
@@ -55,13 +56,14 @@ const deleteVideo = asyncHandler(async (req, res) => {
     const oldThumbnailPublicId = video.thumbnailPublicId;
     const oldVideoFilePublicId = video.videoFilePublicId;
 
-    const thumbnailDeleteResponse = await deleteFilesFromCloud(oldThumbnailPublicId);
+    const thumbnailDeleteResponse =
+        await deleteImageFileFromCloud(oldThumbnailPublicId);
     if (!thumbnailDeleteResponse) {
         throw new ApiError(500, "Thumbnail not deleted");
     }
 
     const videoFileDeleteResponse =
-        await deleteFilesFromCloud(oldVideoFilePublicId);
+        await deleteVideoFileFromCloud(oldVideoFilePublicId);
     if (!videoFileDeleteResponse) {
         throw new ApiError(500, "Video File not deleted");
     }
@@ -204,7 +206,69 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
-    
+    const user = req.user;
+    const { videoId } = req.params;
+    const { title, description } = req.body;
+
+    if (!videoId || videoId.trim() === "") {
+        throw new ApiError(400, "Video Id is required");
+    }
+
+    const video = await Video.findById(videoId);
+
+    if (!video) {
+        throw new ApiError(400, "Wrong Video Id");
+    }
+
+    const owner = video.owner;
+
+    if (!user._id.equals(owner)) {
+        throw new ApiError(402, "User cant update other videos");
+    }
+
+    let newTitle = video.title;
+    let newDescription = video.description;
+
+    if (title && title.trim() !== "") {
+        newTitle = title;
+    }
+
+    if (description && description.trim() !== "") {
+        newDescription = description;
+    }
+
+    const updatedVideo = await Video.findByIdAndUpdate(
+        videoId,
+        {
+            $set: {
+                "title": newTitle,
+                "description": newDescription,
+            },
+        },
+        {
+            new: true,
+        }
+    );
+
+    if (!updatedVideo) {
+        throw new ApiError(500, "Internal error in updating the video");
+    }
+
+    return res.status(201).json(
+        new ApiResponse(
+            201,
+            {
+                updatedVideo: updatedVideo,
+            },
+            "Video Updated Successfully"
+        )
+    );
 });
 
-export { getVideoById, deleteVideo, togglePublishStatus, createVideo };
+export {
+    getVideoById,
+    deleteVideo,
+    togglePublishStatus,
+    createVideo,
+    updateVideo,
+};

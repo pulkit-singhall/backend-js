@@ -5,6 +5,7 @@ import {
     deleteVideo,
     togglePublishStatus,
     createVideo,
+    updateVideo,
 } from "../controllers/video.controller.js";
 import upload from "../middlewares/multer.middleware.js";
 
@@ -29,5 +30,6 @@ videoRoute.route("/create-video").post(
     ]),
     createVideo
 );
+videoRoute.route("/update-video/:videoId").patch(verifyUser, updateVideo);
 
 export { videoRoute };
