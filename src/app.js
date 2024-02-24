@@ -7,6 +7,7 @@ import { userRoute } from "./routes/user.routes.js";
 import { tweetRoute } from "./routes/tweet.routes.js";
 import { videoRoute } from "./routes/video.routes.js";
 import { commentRoute } from "./routes/comment.routes.js"
+import { playlistRoute } from "./routes/playlist.routes.js";
 
 dotenv.config();
 
@@ -43,9 +44,10 @@ app.use(cookieParser());
 
 
 // routes
-app.use("/api/users", userRoute);
-app.use("/api/tweets", tweetRoute);
-app.use("/api/videos", videoRoute);
-app.use("/api/comments", commentRoute);
+app.use("/api/v1/users", userRoute);
+app.use("/api/v1/tweets", tweetRoute);
+app.use("/api/v1/videos", videoRoute);
+app.use("/api/v1/comments", commentRoute);
+app.use("/api/v1/playlists", playlistRoute);
 
 export default app;
