@@ -310,6 +310,55 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     );
 });
 
+const updatePrivateStatus = asyncHandler(async (req, res) => {
+    const { playlistId } = req.params;
+    const user = req.user;
+
+    if (!playlistId || playlistId.trim() === "") {
+        throw new ApiError(400, "Playlist ID is required");
+    }
+
+    const playlist = await Playlist.findById(playlistId);
+    if (!playlist) {
+        throw new ApiError(401, "Wrong Playlist ID");
+    }
+
+    const owner = playlist.owner;
+
+    if (!user._id.equals(owner)) {
+        throw new ApiError(
+            404,
+            "User cant change privacy status of other playlists"
+        );
+    }
+
+    const isPrivate = playlist.isPrivate;
+
+    const changedStatus = await Playlist.findByIdAndUpdate(
+        playlistId,
+        {
+            $set: {
+                isPrivate: 1 - isPrivate,
+            },
+        },
+        { new: true }
+    );
+
+    if (!changedStatus) {
+        throw new ApiError(500, "Internal error in updating the playlist privacy status");
+    }
+
+    return res.status(201).json(
+        new ApiResponse(
+            201,
+            {
+                updatedPrivacyStatus: changedStatus.isPrivate,
+            },
+            "Playlist Privacy status updated successfully"
+        )
+    );
+});
+
 export {
     createPlaylist,
     updatePlaylist,
@@ -318,4 +367,5 @@ export {
     addVideoToPlaylist,
     getPlaylistById,
     getUserPlaylists,
+    updatePrivateStatus,
 };
