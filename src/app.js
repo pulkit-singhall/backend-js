@@ -9,6 +9,7 @@ import { videoRoute } from "./routes/video.routes.js";
 import { commentRoute } from "./routes/comment.routes.js"
 import { playlistRoute } from "./routes/playlist.routes.js";
 import { likeRouter } from "./routes/like.routes.js";
+import { subscriptionRoute } from "./routes/subscription.routes.js";
 
 dotenv.config();
 
@@ -51,5 +52,6 @@ app.use("/api/v1/videos", videoRoute);
 app.use("/api/v1/comments", commentRoute);
 app.use("/api/v1/playlists", playlistRoute);
 app.use("/api/v1/likes", likeRouter);
+app.use("/api/v1/subscriptions", subscriptionRoute);
 
 export default app;
