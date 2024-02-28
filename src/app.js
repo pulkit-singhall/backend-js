@@ -10,6 +10,7 @@ import { commentRoute } from "./routes/comment.routes.js"
 import { playlistRoute } from "./routes/playlist.routes.js";
 import { likeRouter } from "./routes/like.routes.js";
 import { subscriptionRoute } from "./routes/subscription.routes.js";
+import { dashboardRoute } from "./routes/dashboard.routes.js";
 
 dotenv.config();
 
@@ -53,5 +54,6 @@ app.use("/api/v1/comments", commentRoute);
 app.use("/api/v1/playlists", playlistRoute);
 app.use("/api/v1/likes", likeRouter);
 app.use("/api/v1/subscriptions", subscriptionRoute);
+app.use("/api/v1/dashboard", dashboardRoute);
 
 export default app;
