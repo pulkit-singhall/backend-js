@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
+import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {
@@ -8,6 +8,59 @@ import {
     deleteVideoFileFromCloud,
     deleteImageFileFromCloud,
 } from "../utils/cloudinary.js";
+import { data } from "../MOCK_DATA.js";
+import mongoose from "mongoose";
+
+const getAllVideos = asyncHandler(async (req, res) => {
+    const { page, limit, sortBy, sortType, userId } = req.query;
+
+    const lower = Number(limit) * (Number(page) - 1);
+    const upper = Number(lower) + Number(limit);
+
+    // video array
+    const videos = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(userId),
+            },
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "_id",
+                foreignField: "owner",
+                as: "userVideos",
+            },
+        },
+        {
+            $project: {
+                userVideos: 1,
+            },
+        },
+    ]);
+
+    if (!videos || videos.length === 0) {
+        throw new ApiError(500, "Internal error in fetching videos");
+    }
+
+    const userVideos = videos[0].userVideos;
+
+    if (page < 1) {
+        throw new ApiError(400, "Wrong Query Parameters");
+    }
+
+    const paginatedVideos = userVideos.slice(lower, upper);
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { paginatedVideos: paginatedVideos },
+                "Paginated videos fetched"
+            )
+        );
+});
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
@@ -85,7 +138,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     );
 });
 
-const createVideo = asyncHandler(async (req, res) => {
+const publishAVideo = asyncHandler(async (req, res) => {
     const user = req.user;
     const { title, description, duration } = req.body;
     const files = req.files;
@@ -241,8 +294,8 @@ const updateVideo = asyncHandler(async (req, res) => {
         videoId,
         {
             $set: {
-                "title": newTitle,
-                "description": newDescription,
+                title: newTitle,
+                description: newDescription,
             },
         },
         {
@@ -269,6 +322,7 @@ export {
     getVideoById,
     deleteVideo,
     togglePublishStatus,
-    createVideo,
+    publishAVideo,
     updateVideo,
+    getAllVideos,
 };

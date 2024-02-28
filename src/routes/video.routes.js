@@ -4,8 +4,9 @@ import {
     getVideoById,
     deleteVideo,
     togglePublishStatus,
-    createVideo,
+    publishAVideo,
     updateVideo,
+    getAllVideos,
 } from "../controllers/video.controller.js";
 import upload from "../middlewares/multer.middleware.js";
 
@@ -28,8 +29,9 @@ videoRoute.route("/create-video").post(
             maxCount: 1,
         },
     ]),
-    createVideo
+    publishAVideo
 );
 videoRoute.route("/update-video/:videoId").patch(verifyUser, updateVideo);
+videoRoute.route("/get-videos").get(getAllVideos); // pagination
 
 export { videoRoute };
