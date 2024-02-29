@@ -8,11 +8,10 @@ import {
     deleteVideoFileFromCloud,
     deleteImageFileFromCloud,
 } from "../utils/cloudinary.js";
-import { data } from "../MOCK_DATA.js";
 import mongoose from "mongoose";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page, limit, sortBy, sortType, userId } = req.query;
+    const { page = 1, limit = 10, sortBy, sortType, userId } = req.query;
 
     const lower = Number(limit) * (Number(page) - 1);
     const upper = Number(lower) + Number(limit);

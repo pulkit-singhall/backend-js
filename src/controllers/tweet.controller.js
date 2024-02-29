@@ -123,7 +123,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
     );
 });
 
-const getTweets = asyncHandler(async (req, res) => {
+const getUserTweets = asyncHandler(async (req, res) => {
     const { username } = req.params;
 
     if (!username || username.trim() === "") {
@@ -194,4 +194,4 @@ const getTweetById = asyncHandler(async (req, res) => {
     );
 });
 
-export { createTweet, updateTweet, getTweets, deleteTweet, getTweetById };
+export { createTweet, updateTweet, getUserTweets, deleteTweet, getTweetById };

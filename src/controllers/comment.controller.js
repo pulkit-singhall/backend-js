@@ -7,6 +7,10 @@ import mongoose from "mongoose";
 
 const getVideoComments = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const lower = Number(limit) * (Number(page) - 1);
+    const upper = Number(lower) + Number(limit);
 
     if (!videoId || videoId.trim() === "") {
         throw new ApiError(400, "Video Id is required");
@@ -16,7 +20,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const comments = await Video.aggregate([
         {
             $match: {
-                _id: new mongoose.Types.ObjectId(videoId)
+                _id: new mongoose.Types.ObjectId(videoId),
             },
         },
         {
@@ -40,15 +44,21 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     const videoComments = comments[0].videoComments; // another array
 
-    return res.status(200).json(
-        new ApiResponse(
-            200,
-            {
-                videoComments: videoComments,
-            },
-            "Video Comments Fetched!"
-        )
-    );
+    if (page < 1) {
+        throw new ApiError(400, "Wrong Query Parameters");
+    }
+
+    const paginatedComments = videoComments.slice(lower, upper);
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { paginatedComments: paginatedComments },
+                "Paginated comments fetched"
+            )
+        );
 });
 
 const addComment = asyncHandler(async (req, res) => {
